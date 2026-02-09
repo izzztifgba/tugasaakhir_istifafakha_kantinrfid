@@ -18,7 +18,6 @@
             const rfid = document.getElementById('rfid_input_istifafakha').value;
             if (rfid) {
                 alert('RFID ' + rfid + ' telah diterima!');
-                // Di sini Anda bisa menambahkan logika untuk mengirim RFID ke server atau memprosesnya lebih lanjut
             } else {
                 alert('Silahkan masukkan kode RFID terlebih dahulu.');
             }
