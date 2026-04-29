@@ -72,7 +72,7 @@ $query_menu = mysqli_query($koneksi_istifafakha, "
             background-color: var(--bg-soft);
         }
 
-        /* --- SIDEBAR KONSISTEN (SAMA PERSIS DASHBOARD) --- */
+        /* --- SIDEBAR--- */
         nav {
             width: 280px;
             background: linear-gradient(180deg, var(--emerald-dark) 0%, var(--emerald-main) 100%);

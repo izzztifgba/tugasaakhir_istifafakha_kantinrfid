@@ -23,8 +23,19 @@ if (isset($_POST['id_menu'])) {
     $m = mysqli_fetch_array($query);
 
     if ($m) {
+        if ($m['stok'] <= 0) {
+            // Stok habis, redirect dengan pesan error
+            header("Location: kasir_istifafakha.php?msg=" . urlencode('Stok menu sudah habis, tidak bisa ditambahkan.') . "&type=error");
+            exit;
+        }
+
         if (isset($_SESSION['keranjang_istifafakha'][$id])) {
-            $_SESSION['keranjang_istifafakha'][$id]['qty'] += $qty;
+            if ($_SESSION['keranjang_istifafakha'][$id]['qty'] + $qty > $m['stok']) {
+                // Jika total qty melebihi stok, set ke maksimal stok
+                $_SESSION['keranjang_istifafakha'][$id]['qty'] = $m['stok'];
+            } else {
+                $_SESSION['keranjang_istifafakha'][$id]['qty'] += $qty;
+            }
         } else {
             $_SESSION['keranjang_istifafakha'][$id] = [
                 'nama' => $m['nama_menu'],
