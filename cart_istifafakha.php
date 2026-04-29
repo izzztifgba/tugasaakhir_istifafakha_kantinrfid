@@ -1,52 +1,72 @@
 <?php
+ob_start();
 session_start();
 include "koneksi_istifafakha.php";
 
-$id_istifafakha  = $_POST['id_menu'];
-$qty_istifafakha = $_POST['qty'];
-
-$data_istifafakha = mysqli_fetch_array(mysqli_query($koneksi_istifafakha,"SELECT * FROM menu_istifafakha WHERE id_menu='$id_istifafakha'"));
-
-//cek stok
-if ($data_istifafakha['stok'] < $qty_istifafakha) {
-    echo "<script>alert('Stok tidak mencukupi!'); window.location='kasir_istifafakha.php';</script>";
+// Validasi session login
+if (!isset($_SESSION['loginPetugas_istifafakha']) || $_SESSION['loginPetugas_istifafakha'] !== true) {
+    ob_end_clean();
+    header("Location: loginPetugas_istifafakha.php");
     exit;
 }
 
-// Ambil data dari database
-$query_menu_istifafakha = mysqli_query($koneksi_istifafakha, "SELECT * FROM menu_istifafakha WHERE id_menu='$id_istifafakha'");
-$data_istifafakha = mysqli_fetch_array($query_menu_istifafakha);
+if (!isset($_SESSION['keranjang_istifafakha'])) {
+    $_SESSION['keranjang_istifafakha'] = [];
+}
 
-// SESUAIKAN NAMA KOLOM (Cek apakah di DB namanya 'nama_makanan' atau 'nama')
-// ... (kode ambil data menu tetap sama) ...
-$id_istifafakha = $_POST['id_menu'];
-$qty_baru = $_POST['qty'];
+// 1. Logika Tambah dari Katalog
+if (isset($_POST['id_menu'])) {
+    $id = $_POST['id_menu'];
+    $qty = (isset($_POST['qty']) && $_POST['qty'] > 0) ? $_POST['qty'] : 1;
 
-// 1. Cek apakah menu ini sudh di keranjang
-$ketemu_istifafakha = false;
+    $query = mysqli_query($koneksi_istifafakha, "SELECT * FROM menu_istifafakha WHERE id_menu='$id'");
+    $m = mysqli_fetch_array($query);
 
-if (isset($_SESSION['keranjang_istifafakha'])) {
-    foreach ($_SESSION['keranjang_istifafakha'] as &$item_lama_istifafakha) {
-        if ($item_lama_istifafakha['id_menu'] == $id_istifafakha) {
-            // Jika ketemu, tambah Qty dan hitung ulang Subtotal
-            $item_lama_istifafakha['qty'] += $qty_baru;
-            $item_lama_istifafakha['subtotal'] = $item_lama_istifafakha['qty'] * $item_lama_istifafakha['harga'];
-            $ketemu_istifafakha = true;
-            break;
+    if ($m) {
+        if (isset($_SESSION['keranjang_istifafakha'][$id])) {
+            $_SESSION['keranjang_istifafakha'][$id]['qty'] += $qty;
+        } else {
+            $_SESSION['keranjang_istifafakha'][$id] = [
+                'nama' => $m['nama_menu'],
+                'qty' => $qty,
+                'harga' => $m['harga'] // Simpan harga asli untuk hitung subtotal
+            ];
+        }
+        // Hitung ulang subtotal berdasarkan harga asli database
+        $_SESSION['keranjang_istifafakha'][$id]['subtotal'] = $_SESSION['keranjang_istifafakha'][$id]['qty'] * $m['harga'];
+    }
+}
+
+// 2. Logika Tombol Plus / Minus
+if (isset($_GET['id']) && isset($_GET['action'])) {
+    $id = $_GET['id'];
+    $action = $_GET['action'];
+
+    if (isset($_SESSION['keranjang_istifafakha'][$id])) {
+        $query = mysqli_query($koneksi_istifafakha, "SELECT * FROM menu_istifafakha WHERE id_menu='$id'");
+        $m = mysqli_fetch_array($query);
+
+        if ($action == 'plus') {
+            if ($_SESSION['keranjang_istifafakha'][$id]['qty'] < $m['stok']) {
+                $_SESSION['keranjang_istifafakha'][$id]['qty']++;
+            }
+        } elseif ($action == 'minus') {
+            if ($_SESSION['keranjang_istifafakha'][$id]['qty'] > 1) {
+                $_SESSION['keranjang_istifafakha'][$id]['qty']--;
+            } else {
+                // Jika qty 1 ditekan minus, hapus item
+                unset($_SESSION['keranjang_istifafakha'][$id]);
+            }
+        }
+
+        // Update subtotal jika item masih ada
+        if (isset($_SESSION['keranjang_istifafakha'][$id])) {
+            $_SESSION['keranjang_istifafakha'][$id]['subtotal'] = $_SESSION['keranjang_istifafakha'][$id]['qty'] * $m['harga'];
         }
     }
 }
 
-// 2. Jika BELUM ADA, baru buat baris baru (seperti kode lama kamu)
-if (!$ketemu_istifafakha) {
-    $item_baru_istifafakha = [
-        "id_menu" => $id_istifafakha,
-        "nama"    => $data_istifafakha['nama_makanan'],
-        "harga"   => $data_istifafakha['harga'],
-        "qty"     => $qty_baru,
-        "subtotal" => $qty_baru * $data_istifafakha['harga']
-    ];
-    $_SESSION['keranjang_istifafakha'][] = $item_baru_istifafakha;
-}
-
-header("location:kasir_istifafakha.php");
+ob_end_clean();
+header("Location: kasir_istifafakha.php");
+exit;
+?>

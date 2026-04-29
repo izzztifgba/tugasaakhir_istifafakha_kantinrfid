@@ -2,49 +2,45 @@
 session_start();
 include "koneksi_istifafakha.php";
 
-// Cek apakah data dikirim dari form login, jika tidak balikkan ke halaman login
 if (!isset($_POST['username']) || !isset($_POST['password'])) {
     header("Location: loginPetugas_istifafakha.php");
     exit;
 }
 
-//PROTEKSI SQL INJECTION DIMULAI (agar karakter-karakter khusus tidak bisa memanipulasi query database)
 $username_istifafakha = mysqli_real_escape_string($koneksi_istifafakha, $_POST['username']);
-$password_istifafakha = mysqli_real_escape_string($koneksi_istifafakha, $_POST['password']);
-//PROTEKSI SQL INJECTION SELESAI
+$password_raw = mysqli_real_escape_string($koneksi_istifafakha, $_POST['password']);
 
-// Query untuk mencari petugas berdasarkan username dan password
-$sql_istifafakha = "SELECT * FROM petugas_istifafakha 
+// CEK DATABASE KAMU:
+$password_final = md5($password_raw); 
+$sql_istifafakha = "SELECT * FROM user_istifafakha
                     WHERE username = '$username_istifafakha' 
-                    AND password = '$password_istifafakha'";
+                    AND PASSWORD = '$password_final'";
 
 $query_istifafakha = mysqli_query($koneksi_istifafakha, $sql_istifafakha);
 
-// Cek jika ada error pada database
 if (!$query_istifafakha) {
     die("Gagal memproses login: " . mysqli_error($koneksi_istifafakha));
 }
 
-// Ambil data hasil query
 $data_istifafakha = mysqli_fetch_array($query_istifafakha);
 
-// Jika data ditemukan (Login Berhasil)
 if ($data_istifafakha) {
-    // Simpan data ke dalam session
     $_SESSION['loginPetugas_istifafakha'] = true;
-    $_SESSION['id_petugas_istifafakha']    = $data_istifafakha['id_petugas'];
+    $_SESSION['id_user_istifafakha']    = $data_istifafakha['id_user'];
     $_SESSION['nama_petugas_istifafakha']  = $data_istifafakha['nama_petugas'];
+    
+    // Pastikan kolom 'role' sudah kamu tambahkan di database
+    $_SESSION['role_istifafakha']          = isset($data_istifafakha['role']) ? $data_istifafakha['role'] : 'petugas';
+    
+    // Simpan id_kantin ke session agar menu terpisah per-kantin
+    $_SESSION['id_kantin']                 = $data_istifafakha['id_kantin'] ?? null;
 
-    // Lempar ke halaman dashboard
     header("Location: dashboard_istifafakha.php");
     exit;
 } else {
-    // Jika data tidak ditemukan (Login Gagal)
     echo "<script>
-            alert('Username atau password salah!');
+            alert('Username atau password salah! Pastikan data di database sudah di-MD5.');
             window.location='loginPetugas_istifafakha.php';
           </script>";
 }
-
-exit();
 ?>
